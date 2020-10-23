@@ -43,6 +43,8 @@ import * as uuidT from 'uuid';
 
 import { RegGetValue } from 'winapi-bindings';
 
+import * as xdgBasedir from 'xdg-basedir';
+
 const uuid = lazyRequire<typeof uuidT>(() => require('uuid'));
 
 const STATE_CHUNK_SIZE = 128 * 1024;
@@ -72,6 +74,16 @@ class Application {
     ipcMain.on('show-window', () => this.showMainWindow(args?.startMinimized));
 
     app.commandLine.appendSwitch('js-flags', `--max-old-space-size=${args.maxMemory || 4096}`);
+
+    // fix paths on Linux to follow XDG specification
+    if (process.platform == 'linux'){
+      const oldData = app.getPath('appData');
+      app.setPath('appData', xdgBasedir.data);
+      app.setPath('userData', app.getPath('userData').replace(oldData, app.getPath('appData')));
+      fs.ensureDirSync(app.getPath('userData'));
+      app.setPath('cache', app.getPath('cache').replace(oldData, app.getPath('appData')));
+      fs.ensureDirSync(app.getPath('cache'));
+    }
 
     this.mBasePath = app.getPath('userData');
     fs.ensureDirSync(this.mBasePath);
